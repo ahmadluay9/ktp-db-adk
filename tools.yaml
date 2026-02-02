@@ -1,0 +1,120 @@
+sources:
+  cloud-sql-source:
+    kind: cloud-sql-postgres
+    project: ${GOOGLE_CLOUD_PROJECT}
+    region: ${CLOUD_SQL_PG_REGION}
+    instance: ${CLOUD_SQL_PG_INSTANCE}
+    database: ${CLOUD_SQL_PG_DB}
+    user: ${CLOUD_SQL_PG_USER}
+    password: "${CLOUD_SQL_PG_PASSWORD}"
+
+tools:
+  # RETRIEVAL TOOLS
+  get-ktp-by-nik:
+    kind: postgres-sql
+    source: cloud-sql-source
+    description: Mencari detail data KTP penduduk berdasarkan Nomor Induk Kependudukan (NIK).
+    parameters:
+      - name: nik
+        type: string
+        description: "Nomor NIK yang ingin dicari (contoh: 3171016703901110)."
+    statement: |
+      SELECT *
+      FROM ktp_records
+      WHERE nik = $1;
+
+  search-ktp-by-name:
+    kind: postgres-sql
+    source: cloud-sql-source
+    description: Mencari data KTP berdasarkan nama lengkap (pencarian tidak harus nama penuh/fuzzy search).
+    parameters:
+      - name: nama
+        type: string
+        description: "Nama atau sebagian nama penduduk (contoh: Lestari)."
+    statement: |
+      SELECT *
+      FROM ktp_records
+      WHERE full_name ILIKE '%' || $1 || '%'
+      LIMIT 10;
+
+  get-ktp-by-kecamatan:
+    kind: postgres-sql
+    source: cloud-sql-source
+    description: Mengambil daftar penduduk yang tinggal di Kecamatan tertentu.
+    parameters:
+      - name: kecamatan
+        type: string
+        description: "Nama Kecamatan (contoh: Biringkanaya)."
+    statement: |
+      SELECT 
+        nik, 
+        full_name, 
+        address, 
+        village_kelurahan 
+      FROM ktp_records
+      WHERE district_kecamatan ILIKE '%' || $1 || '%'
+      LIMIT 20;
+
+  # AGGREGATE TOOLS
+  agg-population-by-kecamatan:
+    kind: postgres-sql
+    source: cloud-sql-source
+    description: Menampilkan statistik jumlah penduduk dikelompokkan berdasarkan Kecamatan.
+    statement: |
+      SELECT 
+        district_kecamatan, 
+        COUNT(*) as total_penduduk 
+      FROM ktp_records 
+      GROUP BY district_kecamatan 
+      ORDER BY total_penduduk DESC;
+
+  agg-distribution-by-religion:
+    kind: postgres-sql
+    source: cloud-sql-source
+    description: Menampilkan statistik sebaran penduduk berdasarkan Agama.
+    statement: |
+      SELECT 
+        religion, 
+        COUNT(*) as total 
+      FROM ktp_records 
+      GROUP BY religion 
+      ORDER BY total DESC;
+
+  agg-distribution-by-marital-status:
+    kind: postgres-sql
+    source: cloud-sql-source
+    description: Menampilkan statistik jumlah penduduk berdasarkan Status Perkawinan.
+    statement: |
+      SELECT 
+        marital_status, 
+        COUNT(*) as total 
+      FROM ktp_records 
+      GROUP BY marital_status 
+      ORDER BY total DESC;
+
+  agg-top-occupations:
+    kind: postgres-sql
+    source: cloud-sql-source
+    description: Menampilkan 10 jenis pekerjaan terbanyak yang dimiliki penduduk.
+    statement: |
+      SELECT 
+        occupation, 
+        COUNT(*) as total 
+      FROM ktp_records 
+      GROUP BY occupation 
+      ORDER BY total DESC 
+      LIMIT 10;
+
+toolsets:
+  # Toolset for finding specific people
+  ktp_lookup_toolset:
+    - get-ktp-by-nik
+    - search-ktp-by-name
+    - get-ktp-by-kecamatan
+
+  # Toolset for statistical analysis
+  aggregate_toolset:
+    - agg-population-by-kecamatan
+    - agg-distribution-by-religion
+    - agg-distribution-by-marital-status
+    - agg-top-occupations

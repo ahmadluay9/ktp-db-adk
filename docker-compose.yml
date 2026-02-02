@@ -1,0 +1,30 @@
+services:
+  adk:
+    build: .
+    container_name: adk-ktp-agent # Change container name
+    restart: always
+    env_file:
+      - .env
+    # environment:
+    #   - REMOTE_AGENT_URL=http://34.101.127.72:8001
+    depends_on:
+      - toolbox
+    command: >
+      adk web
+      --host 0.0.0.0
+    ports:
+      - "8000:8000"
+
+  # 3. MCP Toolbox
+  toolbox:
+    image: us-central1-docker.pkg.dev/database-toolbox/toolbox/toolbox:0.24.0
+    hostname: toolbox
+    platform: linux/amd64
+    restart: always
+    env_file:
+      - .env
+    ports:
+      - "5001:5000"
+    volumes:
+      - ./tools.yaml:/config/tools.yaml
+    command: [ "toolbox", "--tools-file", "/config/tools.yaml", "--address", "0.0.0.0", "--ui" ]
