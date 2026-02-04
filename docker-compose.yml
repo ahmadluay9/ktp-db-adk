@@ -1,4 +1,6 @@
 services:
+
+# 1. ADK KTP Agent Web Interface
   adk:
     build: .
     container_name: adk-ktp-agent # Change container name
@@ -17,6 +19,7 @@ services:
     networks:
       - cloud-sql-network
 
+# 2. ADK API Server
   adk-server:
     build: .
     container_name: adk-server-ktp # Change container name
@@ -36,7 +39,25 @@ services:
     networks:
       - cloud-sql-network
 
-  # 3. MCP Toolbox
+# 3. FastAPI Application
+  fastapi-app:
+    build: .
+    container_name: fastapi-app # Change container name
+    restart: always
+    env_file:
+      - .env
+    environment:
+      - CLOUD_SQL_PG_HOST=cloud-sql-proxy
+      - CLOUD_SQL_PG_PORT=5432
+    ports:
+      - "8004:8004"
+    depends_on:
+      - adk-server
+    command: uv run main.py
+    networks:
+      - cloud-sql-network
+
+  # 4. MCP Toolbox
   toolbox:
     image: us-central1-docker.pkg.dev/database-toolbox/toolbox/toolbox:0.24.0
     hostname: toolbox
