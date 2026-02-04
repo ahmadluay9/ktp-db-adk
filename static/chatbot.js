@@ -217,8 +217,8 @@ class Chatbot {
             this.input.value = text;
             this.input.focus();
             // Optional: Reset view to default after selection?
-            // this.showingAllQuestions = false; 
-            // this.refreshQuickActions();
+            this.showingAllQuestions = false; 
+            this.refreshQuickActions();
         });
         
         this.quickActions.appendChild(btn);
@@ -964,9 +964,9 @@ class Chatbot {
                 <div class="message-avatar">🤖</div>
                 <div class="message-content">
                     <div class="message-bubble">
-                        👋 Welcome to DataDash!
+                        👋 Selamat Datang!
                         <br><br>
-                        I am here to answer your questions to the best of my knowledge.
+                        Silahkan bertanya mengenai data atau informasi yang Anda butuhkan.
                     </div>
                     <div class="message-time">${this.getCurrentTime()}</div>
                 </div>
