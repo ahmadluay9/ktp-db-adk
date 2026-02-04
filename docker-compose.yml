@@ -6,14 +6,35 @@ services:
     env_file:
       - .env
     # environment:
-    #   - REMOTE_AGENT_URL=http://34.101.127.72:8001
+    #   - REMOTE_AGENT_URL=http://34.101.127.72:5001
     depends_on:
       - toolbox
     command: >
       adk web
       --host 0.0.0.0
     ports:
-      - "8000:8000"
+      - "8001:8000"
+    networks:
+      - cloud-sql-network
+
+  adk-server:
+    build: .
+    container_name: adk-server-ktp # Change container name
+    restart: always
+    env_file:
+      - .env
+    depends_on:
+      - toolbox
+    command: >
+      adk api_server
+      --host 0.0.0.0
+      --session_service_uri="postgresql+asyncpg://${CLOUD_SQL_PG_USER}:${CLOUD_SQL_PG_PASSWORD}@cloud-sql-proxy:5432/${CLOUD_SQL_PG_SESSIONDB}"
+      --allow_origins="*"
+      --artifact_service_uri gs://poc-bjb
+    ports:
+      - "8003:8000"
+    networks:
+      - cloud-sql-network
 
   # 3. MCP Toolbox
   toolbox:
@@ -28,3 +49,9 @@ services:
     volumes:
       - ./tools.yaml:/config/tools.yaml
     command: [ "toolbox", "--tools-file", "/config/tools.yaml", "--address", "0.0.0.0", "--ui" ]
+    networks:
+      - cloud-sql-network
+
+networks:
+  cloud-sql-network:
+    external: true

@@ -1,6 +1,7 @@
 from google.genai.types import HttpRetryOptions
 
-GEMINI_MODEL = "gemini-2.5-flash"
+GEMINI_FLASH = "gemini-2.5-flash"
+GEMINI_PRO = "gemini-2.5-pro"
 
 retry_config= HttpRetryOptions(
     attempts=5,         # Maximum retry attempts
