@@ -11,3 +11,5 @@ wheels/
 .adk
 .env
 artifacts/
+
+HIDE.MD

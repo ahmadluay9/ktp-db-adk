@@ -102,8 +102,8 @@
             position: absolute;
             bottom: 80px;
             right: 0;
-            width: 540px; 
-            height: 750px;
+            width: 600px; 
+            height: 850px;
             max-height: 85vh; 
             background: white;
             border-radius: 16px;
@@ -201,7 +201,7 @@
             padding: 16px;
             background: #f8fafc;
             scroll-behavior: smooth;
-            font-size: 13px;
+            font-size: 16px;
         }
 
         .chatbot-messages::-webkit-scrollbar {
@@ -387,6 +387,47 @@
             background-color: var(--accent-light) !important;
         }
 
+        .chatbot-preview-area {
+            padding: 0 16px;
+            background: white;
+            display: none; /* Hidden by default */
+            gap: 10px;
+            border-top: 1px solid #e2e8f0;
+        }
+
+        .preview-item {
+            position: relative;
+            display: inline-block;
+            margin-top: 10px;
+            margin-bottom: 5px;
+        }
+
+        .preview-thumb {
+            height: 60px;
+            width: auto;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .preview-remove {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            background: #ef4444;
+            color: white;
+            border: 2px solid white;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            font-size: 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+
         /* Input Area */
         .chatbot-input-area {
             display: flex;
@@ -395,6 +436,7 @@
             padding: 12px 16px;
             background: white;
             border-top: 1px solid #e2e8f0;
+            z-index: 10;
         }
 
         .chatbot-attach-btn {
@@ -415,7 +457,7 @@
             flex: 1;
             border: none;
             outline: none;
-            font-size: 14px;
+            font-size: 16px;
             padding: 10px 12px;
             background: #f8fafc;
             border-radius: 20px;
@@ -1092,29 +1134,31 @@
             <!-- History Panel (Slide-in from left) -->
             <div class="chatbot-history-panel" id="chatbot-history-panel">
                 <div class="history-panel-header">
-                    <!-- BACK BUTTON -->
                     <button class="history-back-btn" id="history-back-btn" aria-label="Close history">←</button>
                     <h3>💬 Chat History</h3>
                     <span class="history-panel-subtitle">Select a session to view</span>
                 </div>
                 <div class="history-panel-list" id="chatbot-history-list">
-                    <!-- Sessions will be loaded here -->
                 </div>
             </div>
 
             <!-- Messages Area -->
             <div class="chatbot-messages" id="chatbot-messages">
-                <!-- Welcome message will be added by JS -->
             </div>
 
             <!-- Quick Actions -->
             <div class="chatbot-quick-actions" id="chatbot-quick-actions">
-                <!-- Buttons will be injected here by JavaScript -->
+            </div>
+
+            <!-- Preview Area -->
+            <div id="chatbot-preview-area" class="chatbot-preview-area">
+                <!-- Preview items injected here via JS -->
             </div>
 
             <!-- Input Area -->
             <div class="chatbot-input-area">
-                <button class="chatbot-attach-btn" aria-label="Attach file" title="Attach file">
+                <input type="file" id="chatbot-file-input" accept="image/jpeg, image/png, image/webp" style="display: none;">
+                <button id="chatbot-attach-btn" class="chatbot-attach-btn" aria-label="Attach file" title="Attach file">
                     📎
                 </button>
                 <input 
@@ -1151,6 +1195,7 @@
 
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/dompurify/dist/purify.min.js"></script>
+    
     <!-- Load chatbot script -->
     <script src="/static/chatbot.js"></script>
 </body>

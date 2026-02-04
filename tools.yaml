@@ -9,6 +9,72 @@ sources:
     password: "${CLOUD_SQL_PG_PASSWORD}"
 
 tools:
+  # INSERTION TOOLS
+  insert-ktp-record:
+    kind: postgres-sql
+    source: cloud-sql-source
+    description: >
+      Menambahkan data penduduk baru. Wajib mengisi kolom yang NOT NULL (NIK, Nama, Tempat/Tgl Lahir, Alamat). 
+      Kolom expiry_date boleh diisi tanggal atau 'SEUMUR HIDUP'.
+    parameters:
+      - name: nik
+        type: string
+        description: "(NOT NULL) Nomor Induk Kependudukan 16 digit."
+      - name: full_name
+        type: string
+        description: "(NOT NULL) Nama lengkap sesuai KTP."
+      - name: birth_place
+        type: string
+        description: "(NOT NULL) Kota/Kabupaten tempat lahir."
+      - name: birth_date
+        type: string
+        description: "(NOT NULL) Tanggal lahir. FORMAT WAJIB: YYYY-MM-DD (karena tipe data DATE)."
+      - name: gender
+        type: string
+        description: "Jenis kelamin (LAKI-LAKI / PEREMPUAN)."
+      - name: blood_type
+        type: string
+        description: "Golongan darah (A, B, AB, O, -)."
+      - name: address
+        type: string
+        description: "(NOT NULL) Alamat jalan/komplek."
+      - name: rt_rw
+        type: string
+        description: "RT dan RW (contoh: 005/002)."
+      - name: village_kelurahan
+        type: string
+        description: "Kelurahan atau Desa."
+      - name: district_kecamatan
+        type: string
+        description: "Kecamatan."
+      - name: religion
+        type: string
+        description: "Agama (ISLAM, KRISTEN, KATOLIK, HINDU, BUDHA, KONGHUCU)."
+      - name: marital_status
+        type: string
+        description: "Status (BELUM KAWIN, KAWIN, CERAI HIDUP, CERAI MATI)."
+      - name: occupation
+        type: string
+        description: "Pekerjaan/Profesi."
+      - name: citizenship
+        type: string
+        description: "Kewarganegaraan (WNI / WNA)."
+      - name: expiry_date
+        type: string
+        description: "Tanggal berakhir masa berlaku. Boleh 'SEUMUR HIDUP' atau tanggal (DD-MM-YYYY)."
+    statement: |
+      INSERT INTO ktp_records (
+        nik, full_name, birth_place, birth_date, gender, 
+        blood_type, address, rt_rw, village_kelurahan, district_kecamatan, 
+        religion, marital_status, occupation, citizenship, expiry_date, 
+        created_at, updated_at
+      ) VALUES (
+        $1, $2, $3, $4::date, $5, 
+        $6, $7, $8, $9, $10, 
+        $11, $12, $13, $14, $15, 
+        NOW(), NOW()
+      );
+
   # RETRIEVAL TOOLS
   get-ktp-by-nik:
     kind: postgres-sql
@@ -106,6 +172,10 @@ tools:
       LIMIT 10;
 
 toolsets:
+  # Toolset for data management
+  management_toolset:
+    - insert-ktp-record
+
   # Toolset for finding specific people
   ktp_lookup_toolset:
     - get-ktp-by-nik

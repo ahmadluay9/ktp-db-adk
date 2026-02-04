@@ -3,14 +3,7 @@
 // ============================================
 
 // --- CONFIGURATION ---
-// !!!!!! CHANGE URL!!!!!!
-// const AGENT_API_URL =
-//   (window.location.hostname === 'localhost' ||
-//    window.location.hostname === '127.0.0.1')
-//     ? 'http://127.0.0.1:8003'
-//     : 'https://your-production-api-url.com';
-
-const AGENT_API_URL = 'http://127.0.0.1:8003';
+const AGENT_API_URL = `${window.location.protocol}//${window.location.hostname}:8003`;
 
 // APP NAME
 const APP_NAME = "ktp_agent";
@@ -33,6 +26,8 @@ class Chatbot {
         // Question State
         this.allQuestions = [];
         this.showingAllQuestions = false; 
+
+        this.currentAttachment = null;
         
         // DOM Elements
         this.container = document.getElementById('chatbot-container');
@@ -54,6 +49,10 @@ class Chatbot {
         this.iconClose = this.toggleBtn.querySelector('.fab-icon-close');
         this.sessionIdDisplay = document.getElementById('chatbot-session-id');
         this.sessionCopyBtn = document.getElementById('session-copy-btn');
+
+        this.fileInput = document.getElementById('chatbot-file-input');
+        this.attachBtn = document.getElementById('chatbot-attach-btn');
+        this.previewArea = document.getElementById('chatbot-preview-area');
         
         this.init();
     }
@@ -126,6 +125,17 @@ class Chatbot {
             }
         });
 
+        // Attachment Event Listeners
+        if (this.attachBtn && this.fileInput) {
+            this.attachBtn.addEventListener('click', () => {
+                this.fileInput.click();
+            });
+
+            this.fileInput.addEventListener('change', (e) => {
+                this.handleFileSelect(e);
+            });
+        }
+
         // Initial welcome
         this.showWelcomeMessage();
         this.updateSessionDisplay();
@@ -141,6 +151,50 @@ class Chatbot {
         }, 3000);
 
         console.log(`Chatbot initialized. Connected to: ${AGENT_API_URL}`);
+    }
+
+    handleFileSelect(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        // Validate type (optional but recommended)
+        if (!file.type.startsWith('image/')) {
+            this.showToast('⚠️ Only images are supported');
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const base64Data = e.target.result; // Contains "data:image/jpeg;base64,..."
+            
+            this.currentAttachment = {
+                data: base64Data,
+                mimeType: file.type,
+                rawBase64: base64Data.split(',')[1] // Strip the header for API
+            };
+
+            this.renderPreview(base64Data);
+        };
+        reader.readAsDataURL(file);
+        
+        // Reset input so same file can be selected again if needed
+        event.target.value = '';
+    }
+
+    renderPreview(imgSrc) {
+        this.previewArea.style.display = 'block';
+        this.previewArea.innerHTML = `
+            <div class="preview-item">
+                <img src="${imgSrc}" class="preview-thumb" alt="Preview">
+                <button class="preview-remove" onclick="chatbot.clearAttachment()">×</button>
+            </div>
+        `;
+    }
+
+    clearAttachment() {
+        this.currentAttachment = null;
+        this.previewArea.innerHTML = '';
+        this.previewArea.style.display = 'none';
     }
 
     // Question Management
@@ -705,6 +759,8 @@ class Chatbot {
             const text = messageText || this.input.value.trim();
             if (!text) return;
 
+            if (!text && !this.currentAttachment) return;
+
             const email = this.getUserEmail();
             if (!email) {
                 this.addMessage("Please sign in to chat.", 'bot');
@@ -718,12 +774,14 @@ class Chatbot {
             // Hide actions
             if (this.quickActions) this.quickActions.style.display = 'none';
             
-            // 1. Add User Message
-            this.addMessage(text, 'user');
-            this.input.value = '';
+            // 1. Add User Message to UI (Text + Image)
+            this.addUserMessageToUI(text, this.currentAttachment ? this.currentAttachment.data : null);
             
-            // 2. Create Bot Message with "Thinking" Dots
-            // We pass empty string first, then manually inject the HTML to avoid Markdown parsing the dots
+            // Clear inputs
+            this.input.value = '';
+            const attachmentToSend = this.currentAttachment; // Capture before clearing
+            this.clearAttachment();
+   
             const botMessageDiv = this.createMessageElement('', 'bot');
             const contentBubble = botMessageDiv.querySelector('.message-bubble');
             
@@ -739,13 +797,30 @@ class Chatbot {
 
             try {
                 const url = `${AGENT_API_URL}/run_sse`;
+                
+                // Construct Parts
+                const parts = [];
+                if (text) {
+                    parts.push({ text: text });
+                }
+                
+                // Add Image Part if exists
+                if (attachmentToSend) {
+                    parts.push({
+                        inline_data: {
+                            mime_type: attachmentToSend.mimeType,
+                            data: attachmentToSend.rawBase64
+                        }
+                    });
+                }
+
                 const payload = {
                     appName: APP_NAME,
                     userId: this.userId,
                     sessionId: this.sessionId,
                     newMessage: {
                         role: "user",
-                        parts: [{ text: text }]
+                        parts: parts
                     }
                 };
 
@@ -906,6 +981,12 @@ class Chatbot {
     // Helper to format text (Markdown/Sanitize)
     formatMessage(text) {
         if (!text) return '';
+
+        if (text.trim().startsWith('```')) {
+        text = text.replace(/^```[a-z]*\s*/i, ''); // Remove opening ```markdown
+        text = text.replace(/```\s*$/, '');         // Remove closing ```
+    }
+    
         marked.setOptions({ breaks: true });
         let rawHtml = marked.parse(text);
         return DOMPurify.sanitize(rawHtml);
@@ -921,41 +1002,46 @@ class Chatbot {
 
     // UI Helpers
 
-    addMessage(text, sender, autoScroll = true) {
+    addUserMessageToUI(text, imageSrc) {
         const messageDiv = document.createElement('div');
-        messageDiv.className = `message ${sender}`;
+        messageDiv.className = 'message user';
         
-        let avatarHTML;
-        if (sender === 'bot') {
-            avatarHTML = '<div class="message-avatar">🤖</div>';
-        } else {
-            const userAvatarEl = document.getElementById('user-avatar');
-            const hasProfilePic = userAvatarEl && userAvatarEl.src && !userAvatarEl.src.includes('placeholder');
-            
-            if (hasProfilePic) {
-                avatarHTML = `<img src="${userAvatarEl.src}" class="message-avatar" style="object-fit: cover;" alt="User">`;
-            } else {
-                avatarHTML = '<div class="message-avatar">👤</div>';
-            }
+        // Avatar logic (same as before)
+        const userAvatarEl = document.getElementById('user-avatar');
+        const hasProfilePic = userAvatarEl && userAvatarEl.src && !userAvatarEl.src.includes('placeholder');
+        const avatarHTML = hasProfilePic 
+            ? `<img src="${userAvatarEl.src}" class="message-avatar" style="object-fit: cover;" alt="User">` 
+            : '<div class="message-avatar">👤</div>';
+
+        let contentHTML = '';
+        
+        // Add Image if exists
+        if (imageSrc) {
+            contentHTML += `
+                <div class="message-image-container" style="margin-bottom: 8px;">
+                    <img src="${imageSrc}" class="message-generated-image" style="max-width: 200px; border-radius: 8px;">
+                </div>
+            `;
         }
-        
-        let formattedText = text.replace(/\n/g, '<br>');
-        
-        marked.setOptions({ breaks: true });
-        let rawHtml = marked.parse(text);
-        let safeHtml = DOMPurify.sanitize(rawHtml);
+
+        // Add Text if exists
+        if (text) {
+            marked.setOptions({ breaks: true });
+            let rawHtml = marked.parse(text);
+            contentHTML += DOMPurify.sanitize(rawHtml);
+        }
 
         messageDiv.innerHTML = `
             ${avatarHTML}
             <div class="message-content">
-                <div class="message-bubble">${safeHtml}</div>
+                <div class="message-bubble">${contentHTML}</div>
                 <div class="message-time">${this.getCurrentTime()}</div>
             </div>
         `;
         
         this.messages.appendChild(messageDiv);
         this.messageCount++;
-        if (autoScroll) this.scrollToBottom();
+        this.scrollToBottom();
     }
 
     showWelcomeMessage() {
